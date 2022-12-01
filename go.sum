@@ -1,4 +1,6 @@
-github.com/Seng3694/AdventOfCodeUtilities v0.1.0 h1:8PQ25lOp+5O9Ev38VIEucLBEEowUEEWQYVywmJSCyc8=
-github.com/Seng3694/AdventOfCodeUtilities v0.1.0/go.mod h1:5DgGmR2SOQwqPEU/2pPywiZgEileggZNRiVu0idQHvA=
+github.com/Seng3694/AdventOfCodeUtilities v0.1.4 h1:xZSqM8aYqenBkgmU0JkQI+6jDbZjje1GimaxiBwosT8=
+github.com/Seng3694/AdventOfCodeUtilities v0.1.4/go.mod h1:TWRErxlqzLALbO2WuXvZ+0tQjRobXWQnZm+VpSarwNk=
+github.com/loov/hrtime v1.0.3 h1:LiWKU3B9skJwRPUf0Urs9+0+OE3TxdMuiRPOTwR0gcU=
+github.com/loov/hrtime v1.0.3/go.mod h1:yDY3Pwv2izeY4sq7YcPX/dtLwzg5NU1AxWuWxKwd0p0=
 golang.org/x/exp v0.0.0-20221114191408-850992195362 h1:NoHlPRbyl1VFI6FjwHtPQCN7wAMXI6cKcqrmXhOOfBQ=
 golang.org/x/exp v0.0.0-20221114191408-850992195362/go.mod h1:CxIveKay+FTh1D0yPZemJVgC/95VzuuOLq5Qi4xnoYc=
