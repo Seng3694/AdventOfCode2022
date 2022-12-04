@@ -38,9 +38,8 @@ func main() {
 
 		if elf1.Contains(elf2) || elf2.Contains(elf1) {
 			part1++
-		}
-
-		if elf1.Intersects(elf2) {
+			part2++
+		} else if elf1.Intersects(elf2) {
 			part2++
 		}
 	})
