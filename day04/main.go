@@ -5,31 +5,42 @@ import (
 	"strings"
 )
 
+type Range struct {
+	from, to int
+}
+
+func parse_pair(s string) (Range, Range) {
+	pair := strings.Split(s, ",")
+	return parse_range(pair[0]), parse_range(pair[1])
+}
+
+func parse_range(s string) Range {
+	r := strings.Split(s, "-")
+	return Range{
+		from: aocutil.Atoi(r[0]),
+		to:   aocutil.Atoi(r[1]),
+	}
+}
+
+func (r Range) Contains(other Range) bool {
+	return r.from <= other.from && r.to >= other.to
+}
+
+func (r Range) Intersects(other Range) bool {
+	return (r.from <= other.from && other.from <= r.to) || (r.from > other.from && r.from <= other.to)
+}
+
 func main() {
 	part1 := 0
 	part2 := 0
 	aocutil.FileReadAllLines("input.txt", func(s string) {
-		pair := strings.Split(s, ",")
-		range1 := strings.Split(pair[0], "-")
-		range2 := strings.Split(pair[1], "-")
-		elf1 := struct{ from, to int }{
-			from: aocutil.Atoi(range1[0]),
-			to:   aocutil.Atoi(range1[1]),
-		}
-		elf2 := struct{ from, to int }{
-			from: aocutil.Atoi(range2[0]),
-			to:   aocutil.Atoi(range2[1]),
-		}
+		elf1, elf2 := parse_pair(s)
 
-		if (elf1.from <= elf2.from && elf1.to >= elf2.to) || (elf1.from >= elf2.from && elf2.to >= elf1.to) {
+		if elf1.Contains(elf2) || elf2.Contains(elf1) {
 			part1++
 		}
 
-		if elf1.from > elf2.from {
-			//make sure that elf1 has the smallest start
-			elf1, elf2 = elf2, elf1
-		}
-		if elf2.from <= elf1.to {
+		if elf1.Intersects(elf2) {
 			part2++
 		}
 	})
