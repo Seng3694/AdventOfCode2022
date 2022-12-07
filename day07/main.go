@@ -126,6 +126,33 @@ func update_directory_sizes(current *directory_entry) int {
 	return current.size
 }
 
+func part1(ctx *context) (solution int) {
+	//assumes directories to be sorted by size in descending order
+	//iterate from the back (lowest until size is bigger than 100000)
+	for i := len(ctx.dirLookup) - 1; i >= 0; i-- {
+		if ctx.dirLookup[i].size > 100000 {
+			break
+		}
+		solution += ctx.dirLookup[i].size
+	}
+	return
+}
+
+func part2(ctx *context) (solution int) {
+	totalSpace := 70000000
+	spaceRequired := 30000000
+	usedSpace := ctx.root.size
+	spaceToFree := spaceRequired - (totalSpace - usedSpace)
+	//assumes directories to be sorted by size in descending order
+	for i, d := range ctx.dirLookup {
+		if d.size < spaceToFree {
+			solution = ctx.dirLookup[i-1].size
+			break
+		}
+	}
+	return
+}
+
 func main() {
 	ctx := context{}
 	initialize_context(&ctx)
@@ -141,26 +168,5 @@ func main() {
 		return ctx.dirLookup[i].size > ctx.dirLookup[j].size
 	})
 
-	part1 := 0
-	//iterate from the back (lowest until size is bigger than 100000)
-	for i := len(ctx.dirLookup) - 1; i >= 0; i-- {
-		if ctx.dirLookup[i].size > 100000 {
-			break
-		}
-		part1 += ctx.dirLookup[i].size
-	}
-
-	totalSpace := 70000000
-	spaceRequired := 30000000
-	usedSpace := ctx.root.size
-	spaceToFree := spaceRequired - (totalSpace - usedSpace)
-	part2 := 0
-	for i, d := range ctx.dirLookup {
-		if d.size < spaceToFree {
-			part2 = ctx.dirLookup[i-1].size
-			break
-		}
-	}
-
-	aocutil.AOCFinish(part1, part2)
+	aocutil.AOCFinish(part1(&ctx), part2(&ctx))
 }
