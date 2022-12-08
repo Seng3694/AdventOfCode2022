@@ -12,68 +12,63 @@ const (
 	BOTTOM
 )
 
-type scenic_overview struct {
-	score   int
-	visible bool
+type vector struct {
+	x, y int
 }
 
-func get_scenic_overview(x, y, w, h int, trees [][]byte) scenic_overview {
+func check_direction(x, y, w, h, direction int, trees [][]byte) (int, bool) {
 	tree := trees[y][x]
+	move := vector{}
+	to := vector{x, y}
 
-	visibleFromTop := true
-	topScore := 0
-	for top := y - 1; top >= 0; top-- {
-		if top < 0 {
-			break
-		}
-		topScore++
-		if trees[top][x] >= tree {
-			visibleFromTop = false
-			break
-		}
+	switch direction {
+	case LEFT:
+		move.x = -1
+		to.x = 0
+	case TOP:
+		move.y = -1
+		to.y = 0
+	case RIGHT:
+		move.x = 1
+		to.x = w - 1
+	case BOTTOM:
+		move.y = 1
+		to.y = h - 1
 	}
 
-	visibleFromLeft := true
-	leftScore := 0
-	for left := x - 1; left >= 0; left-- {
-		if left < 0 {
+	current := vector{x, y}
+	visible := true
+	score := 0
+	for {
+		current.x += move.x
+		current.y += move.y
+		score++
+		if trees[current.y][current.x] >= tree {
+			visible = false
 			break
 		}
-		leftScore++
-		if trees[y][left] >= tree {
-			visibleFromLeft = false
-			break
-		}
-	}
-
-	visibleFromRight := true
-	rightScore := 0
-	for right := x + 1; right < w; right++ {
-		rightScore++
-		if trees[y][right] >= tree {
-			visibleFromRight = false
+		if current == to {
 			break
 		}
 	}
 
-	visibleFromBottom := true
-	bottomScore := 0
-	for bottom := y + 1; bottom < h; bottom++ {
-		bottomScore++
-		if trees[bottom][x] >= tree {
-			visibleFromBottom = false
-			break
+	return score, visible
+}
+
+func get_scenic_overview(x, y, w, h int, trees [][]byte) (int, bool) {
+	score := 1
+	visible := false
+	for i := 0; i < 4; i++ {
+		s, v := check_direction(x, y, w, h, i, trees)
+		score *= s
+		if v {
+			visible = true
 		}
 	}
-	overview := scenic_overview{
-		score:   topScore * leftScore * rightScore * bottomScore,
-		visible: visibleFromTop || visibleFromLeft || visibleFromRight || visibleFromBottom,
-	}
-	return overview
+	return score, visible
 }
 
 func main() {
-
 	trees := make([][]byte, 0, 32)
 	aocutil.FileReadAllLines("input.txt", func(s string) {
 		trees = append(trees, []byte(s))
@@ -84,18 +79,18 @@ func main() {
 
 	//edges minus corners which are count twice
 	visible := width*2 + height*2 - 4
-	maxScore := math.MinInt
+	score := math.MinInt
 	for y := 1; y < height-1; y++ {
 		for x := 1; x < width-1; x++ {
-			overview := get_scenic_overview(x, y, width, height, trees)
-			if overview.visible {
+			s, v := get_scenic_overview(x, y, width, height, trees)
+			if v {
 				visible++
 			}
-			if maxScore < overview.score {
-				maxScore = overview.score
+			if score < s {
+				score = s
 			}
 		}
 	}
 
-	aocutil.AOCFinish(visible, maxScore)
+	aocutil.AOCFinish(visible, score)
 }
