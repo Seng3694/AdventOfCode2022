@@ -2,44 +2,36 @@ package main
 
 import (
 	"aocutil"
-	"strings"
 )
 
 type vector struct {
 	x, y int
 }
 
-const (
-	LEFT = iota
-	UP
-	RIGHT
-	DOWN
-)
-
 type command struct {
-	direction, amount int
+	move   vector
+	amount int
 }
 
-func direction_to_int(direction string) int {
+func direction_to_move(direction byte) vector {
 	switch direction {
-	case "L":
-		return LEFT
-	case "U":
-		return UP
-	case "R":
-		return RIGHT
-	case "D":
-		return DOWN
+	case 'L':
+		return vector{-1, 0}
+	case 'U':
+		return vector{0, -1}
+	case 'R':
+		return vector{1, 0}
+	case 'D':
+		return vector{0, 1}
 	default:
-		return -1
+		return vector{0, 0}
 	}
 }
 
 func parse_command(line string) command {
-	split := strings.Split(line, " ")
 	return command{
-		direction: direction_to_int(split[0]),
-		amount:    aocutil.Atoi(split[1]),
+		move:   direction_to_move(line[0]),
+		amount: aocutil.Atoi(line[2:]),
 	}
 }
 
@@ -53,25 +45,13 @@ func sign(value int) int {
 	}
 }
 
-func move(position *vector, direction int) {
-	switch direction {
-	case LEFT:
-		position.x--
-	case UP:
-		position.y++
-	case RIGHT:
-		position.x++
-	case DOWN:
-		position.y--
-	}
-}
-
 func main() {
 	commands := make([]command, 0, 2000)
 	aocutil.FileReadAllLines("input.txt", func(s string) {
 		commands = append(commands, parse_command(s))
 	})
 
+	//head at rope[0]
 	rope := make([]vector, 10)
 
 	part1 := make(map[vector]bool)
@@ -90,9 +70,10 @@ func main() {
 	//sqrt(2*2 + 2*2) = sqrt(8)
 	sqrts := []int{0, 1, 1, 2, 2, 2, 2, 2, 2}
 
-	for _, c := range commands {
-		for s := 0; s < c.amount; s++ {
-			move(&rope[0], c.direction)
+	for _, cmd := range commands {
+		for step := 0; step < cmd.amount; step++ {
+			rope[0].x += cmd.move.x
+			rope[0].y += cmd.move.y
 
 			for i := 1; i < len(rope); i++ {
 				dx := rope[i-1].x - rope[i].x
