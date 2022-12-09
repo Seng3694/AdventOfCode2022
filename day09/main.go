@@ -2,7 +2,6 @@ package main
 
 import (
 	"aocutil"
-	"math"
 	"strings"
 )
 
@@ -81,6 +80,16 @@ func main() {
 	part1[rope[0]] = true
 	part2[rope[0]] = true
 
+	//precalculated square roots. numbers from 0-8
+	//longest distance:
+	// . . .      h . .      h . .      h . .
+	// h . .  UP  . . .  S1  1 . .  S2  1 . .
+	// . 1 .      . 1 .      . . .      . 2 .
+	// . . 2      . . 2      . . 2      . . .
+	//there is a distance of two after S1 in each direction before "2" catches up
+	//sqrt(2*2 + 2*2) = sqrt(8)
+	sqrts := []int{0, 1, 1, 2, 2, 2, 2, 2, 2}
+
 	for _, c := range commands {
 		for s := 0; s < c.amount; s++ {
 			move(&rope[0], c.direction)
@@ -88,7 +97,7 @@ func main() {
 			for i := 1; i < len(rope); i++ {
 				dx := rope[i-1].x - rope[i].x
 				dy := rope[i-1].y - rope[i].y
-				dist := int(math.Sqrt(float64(dx*dx + dy*dy)))
+				dist := sqrts[dx*dx+dy*dy]
 				if dist > 1 {
 					rope[i].x += sign(dx)
 					rope[i].y += sign(dy)
