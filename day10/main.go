@@ -38,10 +38,8 @@ func main() {
 	x := 1
 	cycles := 1
 
-	signalCycles := []int{20, 60, 100, 140, 180, 220, 260}
-	nextSignalCycleIndex := 0
-
-	signals := make([]int, len(signalCycles)-1)
+	signals := []int{20, 60, 100, 140, 180, 220, 260}
+	nextSignalIndex := 0
 
 	crt := []byte(`........................................
 ........................................
@@ -55,17 +53,22 @@ func main() {
 	scx := 0
 	scy := 0
 
+	part1 := 0
+
 	for _, instr := range instructions {
 		for i := 0; i < instr.cycles; i++ {
-			if cycles == signalCycles[nextSignalCycleIndex] {
-				signals[nextSignalCycleIndex] = cycles * x
-				nextSignalCycleIndex++
+			//check signal
+			if cycles == signals[nextSignalIndex] {
+				part1 += cycles * x
+				nextSignalIndex++
 			}
 
+			//draw sprite
 			if scx >= x-1 && scx <= x+1 {
 				crt[scy*41+scx] = '#'
 			}
 
+			//advance scanline
 			scx++
 			if scx == 40 {
 				scx = 0
@@ -75,11 +78,6 @@ func main() {
 		}
 
 		x += instr.operand
-	}
-
-	part1 := 0
-	for _, s := range signals {
-		part1 += s
 	}
 
 	aocutil.AOCFinish(fmt.Sprint(part1), "\n"+string(crt))
