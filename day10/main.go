@@ -82,7 +82,5 @@ func main() {
 		part1 += s
 	}
 
-	fmt.Print(string(crt))
-
 	aocutil.AOCFinish(fmt.Sprint(part1), "\n"+string(crt))
 }
