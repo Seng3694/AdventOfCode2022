@@ -6,33 +6,22 @@ import (
 	"strings"
 )
 
-type instruction struct {
-	cycles, operand int
-}
-
 const (
+	//values are also used for cycle timers
 	NOOP = 1
 	ADDX = 2
 )
 
-func parse(s string) instruction {
-	fields := strings.Fields(s)
-	op := NOOP
-	operand := 0
-	if fields[0] == "addx" {
-		op = ADDX
-		operand = aocutil.Atoi(fields[1])
-	}
-	return instruction{
-		cycles:  op,
-		operand: operand,
-	}
-}
-
 func main() {
-	instructions := make([]instruction, 0, 100)
+	instructions := make([]int8, 0, 250)
 	aocutil.FileReadAllLines("input.txt", func(s string) {
-		instructions = append(instructions, parse(s))
+		fields := strings.Fields(s)
+		if fields[0][0] == 'n' { //can only be noop
+			instructions = append(instructions, NOOP)
+		} else { //because there are only 2 operation it has to be addx
+			instructions = append(instructions, ADDX)
+			instructions = append(instructions, int8(aocutil.Atoi(fields[1])))
+		}
 	})
 
 	x := 1
@@ -55,8 +44,9 @@ func main() {
 
 	part1 := 0
 
-	for _, instr := range instructions {
-		for i := 0; i < instr.cycles; i++ {
+	for i := 0; i < len(instructions); i++ {
+		instr := instructions[i]
+		for c := int8(0); c < instr; c++ {
 			//check signal
 			if cycles == signals[nextSignalIndex] {
 				part1 += cycles * x
@@ -77,7 +67,10 @@ func main() {
 			cycles++
 		}
 
-		x += instr.operand
+		if instr == ADDX {
+			i++
+			x += int(instructions[i])
+		}
 	}
 
 	aocutil.AOCFinish(fmt.Sprint(part1), "\n"+string(crt))
