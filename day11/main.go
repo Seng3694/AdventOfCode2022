@@ -17,11 +17,23 @@ type token struct {
 	ttype, value int
 }
 
+type item_node struct {
+	value, monkey int
+	next          *item_node
+}
+
+var (
+	globalItemIndex = 0
+)
+
+type item struct {
+	index, value, monkey int
+}
+
 type monkey struct {
-	items     []int
+	items     []item
 	operation []token
 	test      int
-	inspected int
 	targets   []int
 }
 
@@ -29,9 +41,14 @@ func parse(lines []string) monkey {
 	m := monkey{}
 	items := strings.Split(strings.Replace(lines[1][18:], " ", "", -1), ",")
 	// 36 is the total number of items (counted manually) => less dynamic allocations
-	m.items = make([]int, 0, 36)
-	for _, item := range items {
-		m.items = append(m.items, aocutil.Atoi(item))
+	m.items = make([]item, 0, 36)
+	for _, i := range items {
+		m.items = append(m.items, item{
+			index:  globalItemIndex,
+			value:  aocutil.Atoi(i),
+			monkey: aocutil.Atoi(lines[0][7:8]),
+		})
+		globalItemIndex++
 	}
 
 	operation := strings.Fields(lines[2][19:])
@@ -87,50 +104,107 @@ func do_operation(old int, tokens []token) int {
 }
 
 func simulate(monkeys []monkey, rounds int, relief bool) int {
-	//create test value which is dividable by all unique test values
-	//would be least common multiple (LCM) but all test values are primes
+	itemMap := make([]map[int]*item_node, len(monkeys))
+	for i := range itemMap {
+		itemMap[i] = make(map[int]*item_node, 32)
+	}
+
+	items := make([]item, 0, globalItemIndex)
+	for _, m := range monkeys {
+		items = append(items, m.items...)
+	}
+
+	visits := make([]int, len(monkeys))
+
 	test := 1
 	for i := range monkeys {
 		test *= monkeys[i].test
 	}
 
-	for r := 0; r < rounds; r++ {
-		for mi := range monkeys {
-			m := &monkeys[mi]
-			for i := range m.items {
-				//inspect
-				m.items[i] = do_operation(m.items[i], m.operation)
-				m.inspected++
+	for _, item := range items {
+		r := 0
+		for r < rounds {
+			value, found := itemMap[item.monkey][item.value]
+			if !found {
+				old := item.value
+				oldMonkey := item.monkey
+				item.value = do_operation(old, monkeys[item.monkey].operation)
+				visits[item.monkey]++
 
-				//relief
 				if relief {
-					m.items[i] /= 3
+					item.value /= 3
 				} else {
-					m.items[i] = m.items[i] % test
+					item.value = item.value % test
 				}
 
-				//throw
-				var m2 *monkey
-				if m.items[i]%m.test == 0 {
-					m2 = &monkeys[m.targets[0]]
+				m2 := 0
+				if item.value%monkeys[item.monkey].test == 0 {
+					m2 = monkeys[item.monkey].targets[0]
 				} else {
-					m2 = &monkeys[m.targets[1]]
+					m2 = monkeys[item.monkey].targets[1]
 				}
-				m2.items = append(m2.items, m.items[i])
+				item.monkey = m2
+
+				value, found = itemMap[item.monkey][item.value]
+				if !found {
+					thisNode := &item_node{value: old, monkey: oldMonkey, next: nil}
+					itemMap[oldMonkey][old] = thisNode
+				} else {
+					thisNode := &item_node{value: old, monkey: oldMonkey, next: value}
+					itemMap[oldMonkey][old] = thisNode
+				}
+				if item.monkey < oldMonkey {
+					r++
+				}
+			} else if found && value.next == nil {
+				old := item.value
+				oldMonkey := item.monkey
+				item.value = do_operation(old, monkeys[item.monkey].operation)
+				visits[item.monkey]++
+
+				if relief {
+					item.value /= 3
+				} else {
+					item.value = item.value % test
+				}
+
+				m2 := 0
+				if item.value%monkeys[item.monkey].test == 0 {
+					m2 = monkeys[item.monkey].targets[0]
+				} else {
+					m2 = monkeys[item.monkey].targets[1]
+				}
+				item.monkey = m2
+
+				value2, found2 := itemMap[item.monkey][item.value]
+				if found2 {
+					value.next = value2
+				}
+				if item.monkey < oldMonkey {
+					r++
+				}
+			} else {
+				current := value
+				for current.next != nil && r < rounds {
+					oldMonkey := current.monkey
+					current = current.next
+					item.value = current.value
+					item.monkey = current.monkey
+					if item.monkey < oldMonkey {
+						r++
+					}
+					visits[oldMonkey]++
+				}
 			}
-
-			//all items thrown. remove them
-			m.items = m.items[:0]
 		}
 	}
 
 	// sort in descending order
-	sort.SliceStable(monkeys, func(i, j int) bool {
-		return monkeys[i].inspected > monkeys[j].inspected
+	sort.SliceStable(visits, func(i, j int) bool {
+		return visits[i] > visits[j]
 	})
 
-	// multiply the first two (largest)
-	return monkeys[0].inspected * monkeys[1].inspected
+	return visits[0] * visits[1]
 }
 
 func main() {
@@ -151,7 +225,7 @@ func main() {
 	monkeysCopy := make([]monkey, len(monkeys))
 	copy(monkeysCopy, monkeys)
 	for i := range monkeysCopy {
-		monkeysCopy[i].items = make([]int, len(monkeys[i].items))
+		monkeysCopy[i].items = make([]item, len(monkeys[i].items))
 		copy(monkeysCopy[i].items, monkeys[i].items)
 	}
 
