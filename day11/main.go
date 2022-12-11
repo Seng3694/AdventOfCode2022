@@ -17,38 +17,36 @@ type token struct {
 	ttype, value int
 }
 
-type item_node struct {
+type node struct {
 	value, monkey int
-	next          *item_node
+	next          *node
 }
-
-var (
-	globalItemIndex = 0
-)
 
 type item struct {
 	index, value, monkey int
 }
 
 type monkey struct {
-	items     []item
 	operation []token
-	test      int
 	targets   []int
+	test      int
 }
 
-func parse(lines []string) monkey {
+var (
+	monkeys      []monkey
+	combinedTest int
+)
+
+func parse(lines []string, items *[]item) {
 	m := monkey{}
-	items := strings.Split(strings.Replace(lines[1][18:], " ", "", -1), ",")
-	// 36 is the total number of items (counted manually) => less dynamic allocations
-	m.items = make([]item, 0, 36)
-	for _, i := range items {
-		m.items = append(m.items, item{
-			index:  globalItemIndex,
+	itemsString := strings.Split(strings.Replace(lines[1][18:], " ", "", -1), ",")
+
+	for _, i := range itemsString {
+		*items = append(*items, item{
+			index:  len(*items),
 			value:  aocutil.Atoi(i),
 			monkey: aocutil.Atoi(lines[0][7:8]),
 		})
-		globalItemIndex++
 	}
 
 	operation := strings.Fields(lines[2][19:])
@@ -75,8 +73,7 @@ func parse(lines []string) monkey {
 		aocutil.Atoi(lines[4][29:]),
 		aocutil.Atoi(lines[5][30:]),
 	}
-
-	return m
+	monkeys = append(monkeys, m)
 }
 
 func get_token_value(old int, t token) int {
@@ -103,88 +100,59 @@ func do_operation(old int, tokens []token) int {
 	}
 }
 
-func simulate(monkeys []monkey, rounds int, relief bool) int {
-	itemMap := make([]map[int]*item_node, len(monkeys))
-	for i := range itemMap {
-		itemMap[i] = make(map[int]*item_node, 32)
-	}
-
-	items := make([]item, 0, globalItemIndex)
-	for _, m := range monkeys {
-		items = append(items, m.items...)
+func simulate(items []item, rounds int, relief bool) int {
+	lookup := make([]map[int]*node, len(monkeys))
+	for i := range lookup {
+		lookup[i] = make(map[int]*node, 32)
 	}
 
 	visits := make([]int, len(monkeys))
 
-	test := 1
-	for i := range monkeys {
-		test *= monkeys[i].test
-	}
-
 	for _, item := range items {
 		r := 0
 		for r < rounds {
-			value, found := itemMap[item.monkey][item.value]
-			if !found {
-				old := item.value
+			oldNode, foundOld := lookup[item.monkey][item.value]
+			if !foundOld || (foundOld && oldNode.next == nil) {
+				// inspect
+				oldValue := item.value
 				oldMonkey := item.monkey
-				item.value = do_operation(old, monkeys[item.monkey].operation)
+				item.value = do_operation(oldValue, monkeys[item.monkey].operation)
 				visits[item.monkey]++
 
+				// relief
 				if relief {
 					item.value /= 3
 				} else {
-					item.value = item.value % test
+					item.value = item.value % combinedTest
 				}
 
-				m2 := 0
+				// "throw" to next monkey
 				if item.value%monkeys[item.monkey].test == 0 {
-					m2 = monkeys[item.monkey].targets[0]
+					item.monkey = monkeys[item.monkey].targets[0]
 				} else {
-					m2 = monkeys[item.monkey].targets[1]
-				}
-				item.monkey = m2
-
-				value, found = itemMap[item.monkey][item.value]
-				if !found {
-					thisNode := &item_node{value: old, monkey: oldMonkey, next: nil}
-					itemMap[oldMonkey][old] = thisNode
-				} else {
-					thisNode := &item_node{value: old, monkey: oldMonkey, next: value}
-					itemMap[oldMonkey][old] = thisNode
-				}
-				if item.monkey < oldMonkey {
-					r++
-				}
-			} else if found && value.next == nil {
-				old := item.value
-				oldMonkey := item.monkey
-				item.value = do_operation(old, monkeys[item.monkey].operation)
-				visits[item.monkey]++
-
-				if relief {
-					item.value /= 3
-				} else {
-					item.value = item.value % test
+					item.monkey = monkeys[item.monkey].targets[1]
 				}
 
-				m2 := 0
-				if item.value%monkeys[item.monkey].test == 0 {
-					m2 = monkeys[item.monkey].targets[0]
-				} else {
-					m2 = monkeys[item.monkey].targets[1]
+				//check if next node exists. if so wire it up properly
+				newNode := oldNode
+				nextNode, foundNext := lookup[item.monkey][item.value]
+				if newNode == nil {
+					newNode = &node{value: oldValue, monkey: oldMonkey, next: nil}
 				}
-				item.monkey = m2
+				if foundNext {
+					newNode.next = nextNode
+				}
+				lookup[oldMonkey][oldValue] = newNode
 
-				value2, found2 := itemMap[item.monkey][item.value]
-				if found2 {
-					value.next = value2
-				}
+				//monkeys throws from 0-N.
+				//so if monkey 2 throws to monkey 3 then monkey 3 throws in the same round
+				//if monkey 5 throws to monkey 2 then monkey 2 will throw in the next round
 				if item.monkey < oldMonkey {
 					r++
 				}
 			} else {
-				current := value
+				// quick lookup due to repeating throwing patterns
+				current := oldNode
 				for current.next != nil && r < rounds {
 					oldMonkey := current.monkey
 					current = current.next
@@ -209,28 +177,29 @@ func simulate(monkeys []monkey, rounds int, relief bool) int {
 
 func main() {
 	lines := make([]string, 0, 6)
-	monkeys := make([]monkey, 0, 8)
+	monkeys = make([]monkey, 0, 8)
+	items := make([]item, 0, 36)
 
 	aocutil.FileReadAllLines("input.txt", func(s string) {
 		if len(s) > 0 {
 			lines = append(lines, s)
 		} else {
-			monkeys = append(monkeys, parse(lines))
+			parse(lines, &items)
 			lines = lines[:0]
 		}
 	})
-	monkeys = append(monkeys, parse(lines))
+	parse(lines, &items)
 
-	//copy "deep" copy monkeys for part2 (only need to deep copy items)
-	monkeysCopy := make([]monkey, len(monkeys))
-	copy(monkeysCopy, monkeys)
-	for i := range monkeysCopy {
-		monkeysCopy[i].items = make([]item, len(monkeys[i].items))
-		copy(monkeysCopy[i].items, monkeys[i].items)
+	combinedTest = 1
+	for _, m := range monkeys {
+		combinedTest *= m.test
 	}
 
-	part1 := simulate(monkeys, 20, true)
-	part2 := simulate(monkeysCopy, 10000, false)
+	itemsCopy := make([]item, len(items))
+	copy(itemsCopy, items)
+
+	part1 := simulate(items, 20, true)
+	part2 := simulate(itemsCopy, 10000, false)
 
 	aocutil.AOCFinish(part1, part2)
 }
