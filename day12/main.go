@@ -31,15 +31,11 @@ func (q *Queue[T]) Dequeue() {
 }
 
 func (q *Queue[T]) DequeueMany(count int) {
-	*q = (*q)[count:len(*q)]
+	*q = (*q)[count:]
 }
 
 func (q *Queue[T]) Clear() {
 	*q = (*q)[:0]
-}
-
-func (q *Queue[T]) Peek() T {
-	return (*q)[0]
 }
 
 type BfsData struct {
