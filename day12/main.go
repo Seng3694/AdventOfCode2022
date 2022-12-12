@@ -53,6 +53,50 @@ func is_valid_move(from, to Vector, w, h int, hm [][]int8) (Vector, bool) {
 		is_in_bounds(to, w, h) && (hm[to.y][to.x]-hm[from.y][from.x]) <= 1
 }
 
+func simulate(starts []Vector, dest Vector, w, h int, hm [][]int8) int {
+	visited := make(map[Vector]int, w*h)
+	queue := make(Queue[BfsData], 0, w*h)
+
+	for _, s := range starts {
+		visited[s] = 0
+		queue = append(queue, BfsData{pos: s})
+	}
+
+	result := math.MaxInt
+
+done:
+	for len(queue) > 0 {
+		currentLength := len(queue)
+		for i := 0; i < currentLength; i++ {
+			current := queue[i]
+			if current.pos == dest {
+				if current.dist < result {
+					result = current.dist
+				}
+				break done
+			}
+
+			positions := []Vector{
+				current.pos.Add(LEFT),
+				current.pos.Add(UP),
+				current.pos.Add(RIGHT),
+				current.pos.Add(DOWN),
+			}
+
+			for _, next := range positions {
+				if pos, yes := is_valid_move(current.pos, next, w, h, hm); yes {
+					if _, yes := visited[pos]; !yes {
+						visited[pos] = current.dist + 1
+						queue.Enqueue(BfsData{pos: pos, dist: current.dist + 1})
+					}
+				}
+			}
+		}
+		queue.DequeueMany(currentLength)
+	}
+	return result
+}
+
 func main() {
 	hm := make([][]int8, 0, 41)
 	start := Vector{}
@@ -78,72 +122,17 @@ func main() {
 	})
 	w := len(hm[0])
 
-	starts := make([]Vector, 0, 32)
-	//collect all starting positions 'a' at the edges of the map
+	starts := make([]Vector, 0, 120)
 	for y := 0; y < h; y++ {
-		if y != 0 && y != h-1 {
-			if hm[y][0] == 'a' {
-				starts = append(starts, Vector{0, y})
-			}
-			if hm[y][w-1] == 'a' {
-				starts = append(starts, Vector{w - 1, y})
-			}
-		} else {
-			for x := 0; x < w; x++ {
-				if hm[y][x] == 'a' {
-					starts = append(starts, Vector{x, y})
-				}
+		for x := 0; x < w; x++ {
+			if hm[y][x] == 'a' {
+				starts = append(starts, Vector{x, y})
 			}
 		}
 	}
 
-	queue := make(Queue[BfsData], 0, w*h)
-	visited := make(map[Vector]int, w*h)
-	part1 := 0
-	part2 := math.MaxInt
-
-	for _, s := range starts {
-		queue.Enqueue(BfsData{pos: s})
-		visited[start] = 0
-
-	done:
-		for len(queue) > 0 {
-			currentLength := len(queue)
-			for i := 0; i < currentLength; i++ {
-				current := queue[i]
-				if current.pos == dest {
-					if part2 > current.dist {
-						part2 = current.dist
-					}
-					if s == start {
-						part1 = current.dist
-					}
-					queue.Clear()
-					for v := range visited {
-						delete(visited, v)
-					}
-					break done
-				}
-
-				positions := []Vector{
-					current.pos.Add(LEFT),
-					current.pos.Add(UP),
-					current.pos.Add(RIGHT),
-					current.pos.Add(DOWN),
-				}
-
-				for _, next := range positions {
-					if pos, yes := is_valid_move(current.pos, next, w, h, hm); yes {
-						if _, yes := visited[pos]; !yes {
-							visited[pos] = current.dist + 1
-							queue.Enqueue(BfsData{pos: pos, dist: current.dist + 1})
-						}
-					}
-				}
-			}
-			queue.DequeueMany(currentLength)
-		}
-	}
+	part1 := simulate([]Vector{start}, dest, w, h, hm)
+	part2 := simulate(starts, dest, w, h, hm)
 
 	aocutil.AOCFinish(part1, part2)
 }
