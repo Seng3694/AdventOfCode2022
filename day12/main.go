@@ -50,29 +50,24 @@ func is_in_bounds(pos Vector, w, h int) bool {
 func is_valid_move(from, to Vector, w, h int, hm [][]int8) (Vector, bool) {
 	//you can go down as far as you want (negative numbers) but only go up by 1
 	return to,
-		is_in_bounds(to, w, h) && (hm[to.y][to.x]-hm[from.y][from.x]) <= 1
+		is_in_bounds(to, w, h) && (hm[from.y][from.x]-hm[to.y][to.x]) <= 1
 }
 
-func simulate(starts []Vector, dest Vector, w, h int, hm [][]int8) int {
+func simulate(start Vector, dest int8, w, h int, hm [][]int8) int {
 	visited := make(map[Vector]int, w*h)
 	queue := make(Queue[BfsData], 0, w*h)
-
-	for _, s := range starts {
-		visited[s] = 0
-		queue = append(queue, BfsData{pos: s})
-	}
-
 	result := math.MaxInt
+
+	queue = append(queue, BfsData{pos: start})
+	visited[start] = 0
 
 done:
 	for len(queue) > 0 {
 		currentLength := len(queue)
 		for i := 0; i < currentLength; i++ {
 			current := queue[i]
-			if current.pos == dest {
-				if current.dist < result {
-					result = current.dist
-				}
+			if dest == hm[current.pos.y][current.pos.x] {
+				result = current.dist
 				break done
 			}
 
@@ -108,7 +103,7 @@ func main() {
 			if s[x] == 'S' {
 				start.x = x
 				start.y = h
-				arr[x] = 'a'
+				arr[x] = 'a' - 1
 			} else if s[x] == 'E' {
 				dest.x = x
 				dest.y = h
@@ -122,17 +117,8 @@ func main() {
 	})
 	w := len(hm[0])
 
-	starts := make([]Vector, 0, 120)
-	for y := 0; y < h; y++ {
-		for x := 0; x < w; x++ {
-			if hm[y][x] == 'a' {
-				starts = append(starts, Vector{x, y})
-			}
-		}
-	}
-
-	part1 := simulate([]Vector{start}, dest, w, h, hm)
-	part2 := simulate(starts, dest, w, h, hm)
+	part1 := simulate(dest, 'a'-1, w, h, hm)
+	part2 := simulate(dest, 'a', w, h, hm)
 
 	aocutil.AOCFinish(part1, part2)
 }
