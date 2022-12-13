@@ -5,21 +5,19 @@ import (
 	"fmt"
 )
 
-type List struct {
-	items []any
-}
+type List []any
 
 //lint:ignore U1000 Ignore unused function temporarily for debugging
 func (list List) print() {
 	fmt.Print("[")
-	for i, item := range list.items {
+	for i, item := range list {
 		switch inner := item.(type) {
 		case List:
 			inner.print()
 		case int:
 			fmt.Print(inner)
 		}
-		if i < len(list.items)-1 {
+		if i < len(list)-1 {
 			fmt.Print(",")
 		}
 	}
@@ -42,16 +40,16 @@ func parse_number(s string, current *int) int {
 }
 
 func parse_list(s string, current *int) List {
-	list := List{items: make([]any, 0, 8)}
+	list := make(List, 0, 8)
 	for s[*current] != ']' {
 		if s[*current] == '[' {
 			*current++
-			list.items = append(list.items, parse_list(s, current))
+			list = append(list, parse_list(s, current))
 			*current++
 		}
 
 		if is_number(s[*current]) {
-			list.items = append(list.items, parse_number(s, current))
+			list = append(list, parse_number(s, current))
 		}
 
 		if s[*current] == ',' {
@@ -74,15 +72,15 @@ const (
 )
 
 func compare(left, right List) int {
-	if len(left.items) == 0 && len(right.items) == 0 {
+	if len(left) == 0 && len(right) == 0 {
 		return COMPARE_EQUALS
 	}
 
-	lower := aocutil.Min(len(left.items), len(right.items))
+	lower := aocutil.Min(len(left), len(right))
 	order := COMPARE_EQUALS
 	for i := 0; i < lower; i++ {
-		leftItem := left.items[i]
-		rightItem := right.items[i]
+		leftItem := left[i]
+		rightItem := right[i]
 
 		switch v1 := leftItem.(type) {
 		case int:
@@ -90,12 +88,12 @@ func compare(left, right List) int {
 			case int:
 				order = v1 - v2
 			case List:
-				order = compare(List{items: []any{v1}}, v2)
+				order = compare(List{v1}, v2)
 			}
 		case List:
 			switch v2 := rightItem.(type) {
 			case int:
-				order = compare(v1, List{items: []any{v2}})
+				order = compare(v1, List{v2})
 			case List:
 				order = compare(v1, v2)
 			}
@@ -109,9 +107,9 @@ func compare(left, right List) int {
 	//if it is still equal then check whether one of them has still elements left
 	//like being a subset of the other
 	if order == COMPARE_EQUALS {
-		if len(left.items) > len(right.items) {
+		if len(left) > len(right) {
 			order = COMPARE_GREATER
-		} else if len(left.items) < len(right.items) {
+		} else if len(left) < len(right) {
 			order = COMPARE_LESSER
 		}
 	}
@@ -141,8 +139,8 @@ func main() {
 		j++
 	}
 
-	extraPacket1 := List{items: []any{List{items: []any{2}}}}
-	extraPacket2 := List{items: []any{List{items: []any{6}}}}
+	extraPacket1 := List{List{2}}
+	extraPacket2 := List{List{6}}
 
 	packets = append(packets, extraPacket1)
 	packets = append(packets, extraPacket2)
