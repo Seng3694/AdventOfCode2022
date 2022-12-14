@@ -53,7 +53,7 @@ func find_bottom(lines []Line) int {
 			}
 		}
 	}
-	return bottom
+	return bottom + 1 //coords are 0 based
 }
 
 func translate(point *Point, translation Point) {
@@ -117,6 +117,7 @@ func print_tile(tiletype uint8) {
 	}
 }
 
+//lint:ignore U1000 Ignore unused function temporarily for debugging
 func print_map(caveMap []uint8, w, h int) {
 	for y := 0; y < h; y++ {
 		for x := 0; x < w; x++ {
@@ -130,7 +131,8 @@ func is_in_bounds(x, y, w, h int) bool {
 	return x >= 0 && x < w && y >= 0 && y < h
 }
 
-func simulate(caveMap []uint8, w, h int, sandSource Point) int {
+// bounds checking. checks whether sand fell into the void
+func simulate_part1(caveMap []uint8, w, h int, sandSource Point) int {
 	sand := sandSource
 	state := STATE_FALLING
 	count := 0
@@ -185,6 +187,60 @@ func simulate(caveMap []uint8, w, h int, sandSource Point) int {
 		case STATE_SETTLED:
 			draw_point(&caveMap, w, h, sand, TILE_SAND)
 			count++
+			state = STATE_FALLING
+			sand = sandSource
+		case STATE_DONE:
+			done = true
+		}
+	}
+
+	return count
+}
+
+// no bounds checking. only checks whether it reached the sandsource
+func simulate_part2(caveMap []uint8, w, h int, sandSource Point) int {
+	sand := sandSource
+	state := STATE_FALLING
+	count := 0
+	done := false
+
+	for !done {
+		switch state {
+		case STATE_FALLING:
+			next := Point{sand.x, sand.y + 1}
+			switch get_type(caveMap, w, h, next) {
+			case TILE_EMPTY:
+				sand = next
+			case TILE_SOLID:
+				fallthrough
+			case TILE_SAND:
+				state = STATE_LEFT
+			}
+		case STATE_LEFT:
+			next := Point{sand.x - 1, sand.y + 1}
+			switch get_type(caveMap, w, h, next) {
+			case TILE_EMPTY:
+				sand = next
+				state = STATE_FALLING
+			case TILE_SOLID:
+				fallthrough
+			case TILE_SAND:
+				state = STATE_RIGHT
+			}
+		case STATE_RIGHT:
+			next := Point{sand.x + 1, sand.y + 1}
+			switch get_type(caveMap, w, h, next) {
+			case TILE_EMPTY:
+				sand = next
+				state = STATE_FALLING
+			case TILE_SOLID:
+				fallthrough
+			case TILE_SAND:
+				state = STATE_SETTLED
+			}
+		case STATE_SETTLED:
+			draw_point(&caveMap, w, h, sand, TILE_SAND)
+			count++
 			if sand == sandSource {
 				state = STATE_DONE
 			} else {
@@ -199,50 +255,49 @@ func simulate(caveMap []uint8, w, h int, sandSource Point) int {
 	return count
 }
 
-func part1(lines []Line) int {
-	sandSource := Point{500, 0}
-
-	bottom := find_bottom(lines)
-	h := bottom + 1
-	w := h * 2
+func create_map(lines []Line, w, h int, origin Point) []uint8 {
 	caveMap := make([]uint8, w*h)
-	origin := Point{sandSource.x - (w / 2), 0}
 	for i := range lines {
 		for j := range lines[i] {
 			translate(&lines[i][j], origin)
 		}
 	}
-
 	draw_lines(&caveMap, w, h, lines)
+	return caveMap
+}
 
+func part1(lines []Line) int {
+	sandSource := Point{500, 0}
+
+	h := find_bottom(lines)
+	w := h * 2
+	origin := Point{sandSource.x - (w / 2), 0}
+
+	caveMap := create_map(lines, w, h, origin)
+
+	//draw sandsource
 	translate(&sandSource, origin)
 	draw_point(&caveMap, w, h, sandSource, TILE_SOURCE)
 
-	return simulate(caveMap, w, h, sandSource)
+	return simulate_part1(caveMap, w, h, sandSource)
 }
 
 func part2(lines []Line) int {
 	sandSource := Point{500, 0}
 
-	bottom := find_bottom(lines)
-	h := bottom + 1 + 2 //+1 to include the last one, +2 for part 2
+	h := find_bottom(lines) + 2
 	w := h * 2
-	caveMap := make([]uint8, w*h)
 	origin := Point{sandSource.x - (w / 2), 0}
-	for i := range lines {
-		for j := range lines[i] {
-			translate(&lines[i][j], origin)
-		}
-	}
 
-	draw_lines(&caveMap, w, h, lines)
+	caveMap := create_map(lines, w, h, origin)
+
 	//draw extra line at the bottom
 	draw_line(&caveMap, w, h, Line{Point{0, h - 1}, Point{w - 1, h - 1}})
 
 	translate(&sandSource, origin)
 	draw_point(&caveMap, w, h, sandSource, TILE_SOURCE)
 
-	return simulate(caveMap, w, h, sandSource)
+	return simulate_part2(caveMap, w, h, sandSource)
 }
 
 func main() {
