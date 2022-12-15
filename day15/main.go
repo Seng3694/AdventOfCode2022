@@ -2,16 +2,16 @@ package main
 
 import (
 	"aocutil"
-	"math"
 	"regexp"
+	"sort"
 )
 
 type Vector struct {
 	x, y int
 }
 
-type Rect struct {
-	left, top, right, bottom int
+type Range struct {
+	left, right int
 }
 
 type Sensor struct {
@@ -54,31 +54,80 @@ func parse(s string) Sensor {
 	return sensor
 }
 
-func find_bounds(sensors []Sensor) Rect {
-	bounds := Rect{}
-	bounds.left = math.MaxInt
-	bounds.top = math.MaxInt
-	bounds.right = math.MinInt
-	bounds.bottom = math.MinInt
+func get_ranges(sensors []Sensor, y int, ranges *[]Range) {
 	for _, s := range sensors {
-		sensorLeft := s.position.x - s.radius
-		sensorRight := s.position.x + s.radius
-		sensorTop := s.position.y - s.radius
-		sensorBottom := s.position.y + s.radius
-		if sensorLeft < bounds.left {
-			bounds.left = sensorLeft
-		}
-		if sensorRight > bounds.right {
-			bounds.right = sensorRight
-		}
-		if sensorTop < bounds.top {
-			bounds.top = sensorTop
-		}
-		if sensorBottom > bounds.bottom {
-			bounds.bottom = sensorBottom
+		yDistance := abs(y - s.position.y)
+		if yDistance < s.radius {
+			dist := abs(s.radius - yDistance)
+			r := Range{s.position.x - dist, s.position.x + dist}
+			(*ranges) = append((*ranges), r)
 		}
 	}
-	return bounds
+}
+
+func merge_ranges(ranges []Range, output *[]Range) {
+	(*output) = append((*output), ranges[0])
+	for _, r2 := range ranges {
+		r1 := (*output)[len((*output))-1]
+		if r1.right >= r2.left && r2.right > r1.right {
+			r1.right = r2.right
+			(*output)[len((*output))-1] = r1
+		} else if r1.right < r2.left {
+			(*output) = append((*output), r2)
+		}
+	}
+}
+
+func part1(sensors []Sensor) int {
+	y := 2000000
+	ranges := make([]Range, 0, len(sensors))
+	get_ranges(sensors, 2000000, &ranges)
+
+	sort.Slice(ranges, func(i, j int) bool {
+		return ranges[i].left < ranges[j].left
+	})
+
+	mergedRanges := make([]Range, 0, len(ranges))
+	merge_ranges(ranges, &mergedRanges)
+
+	solution := 0
+	for _, r := range mergedRanges {
+		solution += (r.right - r.left) + 1
+	}
+	beacons := make(map[Vector]bool)
+	for _, s := range sensors {
+		beacons[s.closestBeacon] = true
+	}
+	for k := range beacons {
+		if k.y == y {
+			solution--
+		}
+	}
+	return solution
+}
+
+func part2(sensors []Sensor) int {
+	solution := 0
+	ranges := make([]Range, 0, len(sensors))
+	mergedRanges := make([]Range, 0, 2)
+
+	for y := 0; y <= 4000000; y++ {
+		ranges := ranges[:0]
+		get_ranges(sensors, y, &ranges)
+
+		sort.Slice(ranges, func(i, j int) bool {
+			return ranges[i].left < ranges[j].left
+		})
+
+		mergedRanges = mergedRanges[:0]
+		merge_ranges(ranges, &mergedRanges)
+
+		if len(mergedRanges) == 2 {
+			solution = (mergedRanges[0].right+1)*4000000 + y
+			break
+		}
+	}
+	return solution
 }
 
 func main() {
@@ -86,31 +135,5 @@ func main() {
 	aocutil.FileReadAllLines("input.txt", func(s string) {
 		sensors = append(sensors, parse(s))
 	})
-
-	beacons := make(map[Vector]bool)
-	for _, s := range sensors {
-		beacons[s.closestBeacon] = true
-	}
-
-	y := 2000000
-	bounds := find_bounds(sensors)
-
-	part1 := 0
-	for x := bounds.left; x < bounds.right; x++ {
-		pos := Vector{x, y}
-	done:
-		for _, s := range sensors {
-			dx := abs(pos.x - s.position.x)
-			dy := abs(pos.y - s.position.y)
-			d := dx + dy
-			if d <= s.radius {
-				if _, found := beacons[pos]; !found {
-					part1++
-					break done
-				}
-			}
-		}
-	}
-
-	aocutil.AOCFinish(part1)
+	aocutil.AOCFinish(part1(sensors), part2(sensors))
 }
